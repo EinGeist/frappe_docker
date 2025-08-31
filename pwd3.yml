@@ -63,7 +63,7 @@ services:
         echo "sites/common_site_config.json found";
         bench new-site --mariadb-user-host-login-scope='%' --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --set-default https://test4.erpnext.omega-eg.io;
 
-  test-erpnext:
+  create-erpnext:
     image: frappe/erpnext:v15.77.0
     networks:
       - frappe_network
