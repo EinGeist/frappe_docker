@@ -77,7 +77,7 @@ services:
           fi
         done;
         echo "sites/common_site_config.json found";
-        bench new-site --mariadb-user-host-login-scope='%' --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --set-default https://test.erpnext.omega-eg.io;
+        bench new-site --mariadb-user-host-login-scope='%' --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --set-default https://test2.erpnext.omega-eg.io;
 
   db:
     image: mariadb:10.6
@@ -126,6 +126,32 @@ services:
       - logs:/home/frappe/frappe-bench/logs
     ports:
       - "8081:8080"
+
+  test2-erpnext:
+    image: frappe/erpnext:v15.77.0
+    networks:
+      - frappe_network
+    depends_on:
+      - websocket
+    deploy:
+      restart_policy:
+        condition: on-failure
+    command:
+      - nginx-entrypoint.sh
+    environment:
+      BACKEND: backend:8000
+      FRAPPE_SITE_NAME_HEADER: https://test2.erpnext.omega-eg.io
+      SOCKETIO: websocket:9000
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+      PROXY_READ_TIMEOUT: 120
+      CLIENT_MAX_BODY_SIZE: 50m
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    ports:
+      - "8082:8080"
 
   queue-long:
     image: frappe/erpnext:v15.77.0
