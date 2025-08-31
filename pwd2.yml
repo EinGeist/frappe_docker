@@ -154,4 +154,3 @@ volumes:
 networks:
   frappe_network:
     driver: bridge
-    external: true
