@@ -101,7 +101,7 @@ services:
     volumes:
       - db-data:/var/lib/mysql
 
-  frontend:
+  test-erpnext:
     image: frappe/erpnext:v15.77.0
     networks:
       - frappe_network
