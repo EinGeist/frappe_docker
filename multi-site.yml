@@ -1,4 +1,5 @@
 version: "3"
+services:
   frontend:
     image: frappe/erpnext:v15.77.0
     networks:
