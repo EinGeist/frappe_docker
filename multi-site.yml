@@ -10,11 +10,9 @@ services:
     command:
       - nginx-entrypoint.sh
     environment:
-      BACKEND: backend-e0w8kcggcosk8c8g08s4g80k-120521016541
-
+      BACKEND: localhost:8000
       FRAPPE_SITE_NAME_HEADER: https://test2.erpnext.omega-eg.io
-      SOCKETIO: websocket-e0w8kcggcosk8c8g08s4g80k-120521171569
-
+      SOCKETIO: localhost:9000
       UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
       UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
       UPSTREAM_REAL_IP_RECURSIVE: "off"
